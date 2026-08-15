@@ -27,13 +27,19 @@
 
 ## 🚀 一键安装
 
-复制以下命令粘贴到 Termux 中执行：
+**方法一（推荐）：git 方式，国内网络更稳定**
+
+```bash
+rm -rf ~/.st-tools-sync && git clone --depth 1 https://github.com/Asuccc/asucooo-st.git ~/.st-tools-sync && cp ~/.st-tools-sync/st.sh ~/st.sh && bash ~/st.sh
+```
+
+**方法二：curl 方式（raw 域名可达时可用）**
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Asuccc/asucooo-st/main/st.sh -o ~/st.sh && bash ~/st.sh
 ```
 
-脚本会打开管理菜单，选择「1) 一键安装」即可。也可以跳过菜单直接安装：
+脚本会打开管理面板，选择「1) 一键安装」即可。也可以跳过菜单直接安装：
 
 ```bash
 bash ~/st.sh install
@@ -92,6 +98,10 @@ SillyTavern 是一个前端界面，**需要连接模型后端才能对话**：
 - 详细配置请参考 [SillyTavern 官方文档](https://docs.sillytavern.app/)
 
 ## ❓ 常见问题
+
+**Q: 安装/更新时提示「管理脚本同步失败」？**
+
+A: 管理脚本自更新优先走 `github.com` 的 git，失败一般是网络波动，稍后重试 `bash ~/st.sh update` 即可；也可以重新执行「方法一」的 git 安装命令强制拉取最新版。
 
 **Q: npm install 很慢或失败？**
 
