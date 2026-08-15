@@ -55,6 +55,31 @@ bash ~/st.sh
 | `bash ~/st.sh update` | 更新到最新版 |
 | `bash ~/st.sh uninstall` | 卸载（删除全部数据） |
 | `bash ~/st.sh status` | 查看状态信息 |
+| `bash ~/st.sh autostart` | 设置打开 Termux 自启动 |
+
+## 🔄 Termux 自启动
+
+打开 Termux 时自动弹出管理菜单（或直接启动 SillyTavern）：
+
+1. 运行 `bash ~/st.sh` 打开管理菜单
+2. 选择「**5) 设置 Termux 自启动**」
+3. 选择模式：
+   - **1) 管理菜单模式**：打开 Termux 自动显示管理菜单（推荐）
+   - **2) 直接启动模式**：打开 Termux 直接启动 SillyTavern 服务
+   - **3) 关闭**：取消自启动
+
+也可以用命令直接设置：
+
+```bash
+bash ~/st.sh autostart on       # 开启（管理菜单模式）
+bash ~/st.sh autostart direct   # 开启（直接启动模式）
+bash ~/st.sh autostart off      # 关闭
+bash ~/st.sh autostart status   # 查看当前状态
+```
+
+> 原理：脚本会向 `~/.bashrc` 写入一段带标记的配置块（`# >>> ST-AUTOSTART-BEGIN >>>`），由脚本统一管理，重复设置不会产生冗余。
+>
+> 临时跳过自启动：在 Termux 里先执行 `export ST_SKIP_AUTOSTART=1` 再打开新会话即可。
 
 ## 🔌 配置模型后端
 

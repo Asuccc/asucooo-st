@@ -9,6 +9,7 @@
 #    bash st.sh update       # 更新到最新版
 #    bash st.sh uninstall    # 卸载（删除全部数据）
 #    bash st.sh status       # 查看状态信息
+#    bash st.sh autostart    # 设置打开 Termux 自启动
 #
 #  仓库: https://github.com/<你的GitHub用户名>/asucooo-st
 # ============================================================
@@ -23,6 +24,10 @@ ST_DIR="$HOME/SillyTavern"                          # SillyTavern 安装目录
 ST_REPO="https://github.com/SillyTavern/SillyTavern.git"
 BASE_URL="https://raw.githubusercontent.com/${GITHUB_USER}/${REPO_NAME}/main"
 PORT=8000
+
+# 自启动管理（写入 ~/.bashrc 的标记，用于定位和删除配置块）
+AUTOSTART_BEGIN="# >>> ST-AUTOSTART-BEGIN >>>"
+AUTOSTART_END="# <<< ST-AUTOSTART-END <<<"
 
 # ---------- 颜色与提示 ----------
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[0;33m'; NC='\033[0m'
@@ -202,6 +207,128 @@ cmd_status() {
   fi
 }
 
+# ---------- Termux 自启动 ----------
+# 原理：向 ~/.bashrc 写入一段配置，每次打开 Termux 时自动执行。
+# 用带标记的代码块管理，可随时开启/关闭/切换模式。
+
+autostart_is_on() {
+  [ -f "$HOME/.bashrc" ] && grep -q "$AUTOSTART_BEGIN" "$HOME/.bashrc"
+}
+
+# 用纯 bash 删除 ~/.bashrc 中的自启动配置块（避免依赖 sed）
+autostart_remove() {
+  if [ -f "$HOME/.bashrc" ] && autostart_is_on; then
+    local tmp line skip=0
+    tmp="$HOME/.bashrc.st.tmp"
+    : > "$tmp"
+    while IFS= read -r line; do
+      if [ "$line" = "$AUTOSTART_BEGIN" ]; then
+        skip=1
+      fi
+      if [ "$skip" = "0" ]; then
+        printf '%s\n' "$line" >> "$tmp"
+      fi
+      if [ "$line" = "$AUTOSTART_END" ]; then
+        skip=0
+      fi
+    done < "$HOME/.bashrc"
+    mv "$tmp" "$HOME/.bashrc"
+    info "已清除旧的自动启动配置。"
+  fi
+}
+
+# $1 = menu（默认）| direct
+autostart_write() {
+  autostart_remove
+  {
+    echo "$AUTOSTART_BEGIN"
+    echo "# 由 st.sh 自动管理，请勿手动修改；临时跳过可执行: export ST_SKIP_AUTOSTART=1"
+    echo 'if [ -f "$HOME/st.sh" ] && [ -z "$ST_SKIP_AUTOSTART" ]; then'
+    if [ "$1" = "direct" ]; then
+      echo '    bash "$HOME/st.sh" start'
+    else
+      echo '    bash "$HOME/st.sh"'
+    fi
+    echo 'fi'
+    echo "$AUTOSTART_END"
+  } >> "$HOME/.bashrc"
+}
+
+# 自启动设置（支持命令行参数或交互子菜单）
+cmd_autostart() {
+  local mode="${1:-}"
+  case "$mode" in
+    on)
+      autostart_write menu
+      info "已开启自启动（管理菜单模式），下次打开 Termux 生效。"
+      return
+      ;;
+    direct)
+      autostart_write direct
+      info "已开启自启动（直接启动模式），下次打开 Termux 生效。"
+      return
+      ;;
+    off)
+      autostart_remove
+      info "已关闭自启动。"
+      return
+      ;;
+    status)
+      if autostart_is_on; then
+        if grep -q 'st.sh" start' "$HOME/.bashrc"; then
+          echo "已开启（打开 Termux 直接启动 SillyTavern）"
+        else
+          echo "已开启（打开 Termux 显示管理菜单）"
+        fi
+      else
+        echo "未开启"
+      fi
+      return
+      ;;
+    "") ;; # 进入交互子菜单
+    *)
+      warn "未知参数: $1"
+      return 1
+      ;;
+  esac
+
+  while true; do
+    echo
+    echo "===== Termux 自启动设置 ====="
+    if autostart_is_on; then
+      if grep -q 'st.sh" start' "$HOME/.bashrc"; then
+        echo "当前状态: 已开启（打开 Termux 直接启动 SillyTavern）"
+      else
+        echo "当前状态: 已开启（打开 Termux 显示管理菜单）"
+      fi
+    else
+      echo "当前状态: 未开启"
+    fi
+    echo "  1) 开启：打开 Termux 自动显示管理菜单"
+    echo "  2) 开启：打开 Termux 直接启动 SillyTavern"
+    echo "  3) 关闭自启动"
+    echo "  0) 返回"
+    echo "--------------------------------------"
+    read -r -p "请选择: " choice
+    case "$choice" in
+      1)
+        autostart_write menu
+        info "已开启自启动（管理菜单模式），下次打开 Termux 生效。"
+        ;;
+      2)
+        autostart_write direct
+        info "已开启自启动（直接启动模式），下次打开 Termux 生效。"
+        ;;
+      3)
+        autostart_remove
+        info "已关闭自启动。"
+        ;;
+      0) return ;;
+      *) warn "无效选择，请重新输入。" ;;
+    esac
+  done
+}
+
 # ---------- 交互式菜单 ----------
 cmd_menu() {
   while true; do
@@ -214,9 +341,11 @@ cmd_menu() {
       echo "  2) 更新 SillyTavern"
       echo "  3) 卸载 SillyTavern"
       echo "  4) 查看状态信息"
+      echo "  5) 设置 Termux 自启动"
     else
       echo "  1) 一键安装 SillyTavern"
       echo "  2) 查看状态信息"
+      echo "  5) 设置 Termux 自启动"
     fi
     echo "  0) 退出"
     echo "--------------------------------------"
@@ -230,6 +359,7 @@ cmd_menu() {
         ;;
       3) cmd_uninstall ;;
       4) cmd_status ;;
+      5) cmd_autostart ;;
       0)
         echo "再见！"
         break
@@ -250,6 +380,7 @@ usage() {
   echo "  update      更新 SillyTavern"
   echo "  uninstall   卸载 SillyTavern"
   echo "  status      查看状态信息"
+  echo "  autostart   设置 Termux 自启动（可用参数: on/direct/off/status）"
   echo "  help        显示本帮助"
 }
 
@@ -267,6 +398,7 @@ main() {
     update)    cmd_update ;;
     uninstall) cmd_uninstall ;;
     status|info) cmd_status ;;
+    autostart) cmd_autostart "${2:-}" ;;
     help|-h|--help) usage ;;
     *)
       warn "未知命令: $1"
