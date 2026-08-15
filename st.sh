@@ -30,7 +30,7 @@ AUTOSTART_BEGIN="# >>> ST-AUTOSTART-BEGIN >>>"
 AUTOSTART_END="# <<< ST-AUTOSTART-END <<<"
 
 # ---------- 颜色与提示 ----------
-RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[0;33m'; NC='\033[0m'
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[0;33m'; CYAN='\033[0;36m'; BOLD='\033[1m'; NC='\033[0m'
 info()  { echo -e "${GREEN}[信息]${NC} $*"; }
 warn()  { echo -e "${YELLOW}[提示]${NC} $*"; }
 error() { echo -e "${RED}[错误]${NC} $*"; }
@@ -161,7 +161,6 @@ cmd_start() {
   fi
   info "启动 SillyTavern，请用浏览器访问 http://127.0.0.1:${PORT}"
   info "按 Ctrl+C 停止服务。"
-  warn "【提醒】启动酒馆后需要把 Termux 挂小窗；不想挂小窗，请在手机设置里调整 Termux 的省电策略（一般叫允许后台活动或无限制）。"
   cd "$ST_DIR" && node server.js
 }
 
@@ -344,25 +343,30 @@ cmd_autostart() {
 # ---------- 交互式菜单 ----------
 cmd_menu() {
   while true; do
+    clear
     echo
-    echo "======================================"
-    echo "    SillyTavern 管理菜单 (Termux)"
-    echo "======================================"
+    echo -e "${GREEN}  ══════════════════════════════════════════${NC}"
+    echo -e "     ${BOLD}🍺 SillyTavern${NC} 酒馆管理菜单"
+    echo -e "${GREEN}  ══════════════════════════════════════════${NC}"
+    echo
     if is_installed; then
-      echo "  1) 启动 SillyTavern"
-      echo "  2) 更新 SillyTavern"
-      echo "  3) 卸载 SillyTavern"
-      echo "  4) 查看状态信息"
-      echo "  5) 设置 Termux 自启动"
+      echo -e "   ${CYAN}1)${NC} 启动 SillyTavern"
+      echo -e "   ${CYAN}2)${NC} 更新 SillyTavern"
+      echo -e "   ${CYAN}3)${NC} 卸载 SillyTavern"
+      echo -e "   ${CYAN}4)${NC} 查看状态信息"
+      echo -e "   ${CYAN}5)${NC} 设置 Termux 自启动"
     else
-      echo "  1) 一键安装 SillyTavern"
-      echo "  2) 查看状态信息"
-      echo "  5) 设置 Termux 自启动"
+      echo -e "   ${CYAN}1)${NC} 一键安装 SillyTavern"
+      echo -e "   ${CYAN}2)${NC} 查看状态信息"
+      echo -e "   ${CYAN}5)${NC} 设置 Termux 自启动"
     fi
-    echo "  0) 退出"
-    echo "--------------------------------------"
-    warn "【！！启动酒馆后 需要把 Termux 挂小窗，不想挂小窗就在手机设置里面调一下 Termux 的省电策略（一般叫允许后台活动或者叫无限制）】"
-    read -r -p "请选择: " choice
+    echo -e "   ${CYAN}0)${NC} 退出"
+    echo
+    echo -e "${GREEN}  ──────────────────────────────────────────${NC}"
+    echo -e "   状态: ${BOLD}$(is_installed && echo -n 已安装 || echo -n 未安装)${NC} | 自启动: ${BOLD}$(autostart_is_on && echo -n 开启 || echo -n 关闭)${NC} | Node: $(node --version 2>/dev/null || echo 未安装)"
+    echo -e "${GREEN}  ──────────────────────────────────────────${NC}"
+    echo
+    read -r -p "  请选择 [0-5]: " choice
     case "$choice" in
       1)
         if is_installed; then cmd_start; else FROM_MENU=1 cmd_install; fi
