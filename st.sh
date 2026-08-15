@@ -140,7 +140,6 @@ cmd_install() {
   info "             (OpenAI 兼容接口 / Claude / Gemini / 本地后端等)"
   info "  自启动:    已开启，重启 Termux 后自动弹出管理菜单"
   info "  如需关闭:  bash ~/st.sh autostart off"
-  info "  安全提醒:  请及时在设置中设置用户名和密码，防止被他人访问"
   info "=============================================="
 
   # 首次安装完成后，直接打开一次管理菜单（无需重启 Termux）
