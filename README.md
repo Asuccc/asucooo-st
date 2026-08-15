@@ -27,13 +27,21 @@
 
 ## 🚀 一键安装
 
-**方法一（推荐）：jsDelivr CDN，Termux 自带 curl 即可，无需安装 git，国内网络稳定**
+**方法一（推荐）：jsDelivr CDN —— 国内用户首选，无需安装 git**
 
 ```bash
 curl -fsSL https://cdn.jsdelivr.net/gh/Asuccc/asucooo-st@main/st.sh -o ~/st.sh && bash ~/st.sh
 ```
 
-**方法二：git 方式（自动安装 git，始终获取最新版）**
+**方法二：GitHub 官方 raw —— 国外网络直连更快**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Asuccc/asucooo-st/main/st.sh -o ~/st.sh && bash ~/st.sh
+```
+
+> 方法一和方法二下载的是**同一个文件**，只是网络路径不同：jsDelivr 在国内有 CDN 节点（不用梯子，国内稳定）；raw 是 GitHub 官方域名（国外快，国内时通时不通）。哪个能通就用哪个。
+
+**方法三：git 方式 —— 自动安装 git，始终获取最新版**
 
 ```bash
 pkg install -y git && rm -rf ~/.st-tools-sync && git clone --depth 1 https://github.com/Asuccc/asucooo-st.git ~/.st-tools-sync && cp ~/.st-tools-sync/st.sh ~/st.sh && bash ~/st.sh
