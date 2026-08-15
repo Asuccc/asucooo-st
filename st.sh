@@ -346,7 +346,7 @@ cmd_menu() {
     clear
     echo
     echo -e "${GREEN}  ══════════════════════════════════════════${NC}"
-    echo -e "     ${BOLD}🍺 SillyTavern${NC} 酒馆管理菜单"
+    echo -e "     ${BOLD}🍺 SillyTavern${NC}管理面板"
     echo -e "${GREEN}  ══════════════════════════════════════════${NC}"
     echo
     if is_installed; then
