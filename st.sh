@@ -127,6 +127,10 @@ cmd_install() {
     curl -fsSL "$BASE_URL/st.sh" -o "$HOME/st.sh" 2>/dev/null && chmod +x "$HOME/st.sh" && info "管理脚本已保存到 ~/st.sh"
   fi
 
+  # 自动开启 Termux 自启动（管理菜单模式）：搭建完成后重启 Termux 即自动弹出管理菜单
+  autostart_write menu
+  info "已自动开启 Termux 自启动（管理菜单模式），重启 Termux 后自动弹出管理菜单。"
+
   echo
   info "=============================================="
   info "安装完成！"
@@ -134,6 +138,8 @@ cmd_install() {
   info "  访问地址:  http://127.0.0.1:${PORT}"
   info "  首次使用:  浏览器打开上述地址，在右上角设置中配置模型 API"
   info "             (OpenAI 兼容接口 / Claude / Gemini / 本地后端等)"
+  info "  自启动:    已开启，重启 Termux 后自动弹出管理菜单"
+  info "  关闭自启动: bash ~/st.sh autostart off"
   info "  安全提醒:  请及时在设置中设置用户名和密码，防止被他人访问"
   info "=============================================="
 }
