@@ -23,6 +23,7 @@ REPO_NAME="asucooo-st"
 ST_DIR="$HOME/SillyTavern"                          # SillyTavern 安装目录
 ST_REPO="https://github.com/SillyTavern/SillyTavern.git"
 BASE_URL="https://raw.githubusercontent.com/${GITHUB_USER}/${REPO_NAME}/main"
+TOOLS_REPO="https://github.com/${GITHUB_USER}/${REPO_NAME}.git"
 PORT=8000
 
 # 自启动管理（写入 ~/.bashrc 的标记，用于定位和删除配置块）
@@ -76,6 +77,27 @@ check_env() {
   fi
 }
 
+# 同步管理脚本本体到 ~/st.sh
+# 优先走 github.com 的 git（安装 SillyTavern 用的就是它，一般可达）；
+# raw.githubusercontent.com 在国内常被墙，curl 仅作兜底。
+sync_st_script() {
+  local tmp="$HOME/.st-tools-sync"
+  if command -v git >/dev/null 2>&1; then
+    if [ -d "$tmp/.git" ]; then
+      (cd "$tmp" && git fetch --depth 1 origin >/dev/null 2>&1 && git reset --hard origin/main >/dev/null 2>&1)
+    else
+      rm -rf "$tmp"
+      git clone --depth 1 "$TOOLS_REPO" "$tmp" >/dev/null 2>&1
+    fi
+    if [ -f "$tmp/st.sh" ]; then
+      cp "$tmp/st.sh" "$HOME/st.sh" && chmod +x "$HOME/st.sh"
+      return 0
+    fi
+  fi
+  # 兜底：curl 直接下载
+  curl -fsSL "$BASE_URL/st.sh" -o "$HOME/st.sh" 2>/dev/null && chmod +x "$HOME/st.sh"
+}
+
 # ---------- 一键安装 ----------
 cmd_install() {
   echo "=============================================="
@@ -122,9 +144,13 @@ cmd_install() {
   info "安装依赖 (npm install)，视网络情况可能需要几分钟..."
   (cd "$ST_DIR" && npm install --no-audit --no-fund) || { error "npm install 失败。"; exit 1; }
 
-  # 保存管理脚本本体（管道模式运行时无法自复制，直接下载自身）
+  # 保存管理脚本本体（优先 git 同步，管道模式也可用）
   if [ ! -f "$HOME/st.sh" ] && [ "$GITHUB_USER" != "你的GitHub用户名" ]; then
-    curl -fsSL "$BASE_URL/st.sh" -o "$HOME/st.sh" 2>/dev/null && chmod +x "$HOME/st.sh" && info "管理脚本已保存到 ~/st.sh"
+    if sync_st_script; then
+      info "管理脚本已保存到 ~/st.sh"
+    else
+      warn "管理脚本下载失败（网络问题），可稍后执行: bash ~/st.sh update"
+    fi
   fi
 
   # 自动开启 Termux 自启动（管理菜单模式）：搭建完成后重启 Termux 即自动弹出管理菜单
@@ -176,7 +202,11 @@ cmd_update() {
   (cd "$ST_DIR" && npm install --no-audit --no-fund) || { error "npm install 失败。"; return 1; }
   # 同步更新管理脚本本体
   if [ "$GITHUB_USER" != "你的GitHub用户名" ]; then
-    curl -fsSL "$BASE_URL/st.sh" -o "$HOME/st.sh" 2>/dev/null && chmod +x "$HOME/st.sh" && info "管理脚本已同步到最新版"
+    if sync_st_script; then
+      info "管理脚本已同步到最新版"
+    else
+      warn "管理脚本同步失败（网络问题），可稍后重试: bash ~/st.sh update"
+    fi
   fi
   info "更新完成！"
 }
