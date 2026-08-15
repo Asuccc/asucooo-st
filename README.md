@@ -27,16 +27,16 @@
 
 ## 🚀 一键安装
 
-**方法一（推荐）：git 方式，国内网络更稳定**
+**方法一（推荐）：jsDelivr CDN，Termux 自带 curl 即可，无需安装 git，国内网络稳定**
 
 ```bash
-rm -rf ~/.st-tools-sync && git clone --depth 1 https://github.com/Asuccc/asucooo-st.git ~/.st-tools-sync && cp ~/.st-tools-sync/st.sh ~/st.sh && bash ~/st.sh
+curl -fsSL https://cdn.jsdelivr.net/gh/Asuccc/asucooo-st@main/st.sh -o ~/st.sh && bash ~/st.sh
 ```
 
-**方法二：curl 方式（raw 域名可达时可用）**
+**方法二：git 方式（自动安装 git，始终获取最新版）**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Asuccc/asucooo-st/main/st.sh -o ~/st.sh && bash ~/st.sh
+pkg install -y git && rm -rf ~/.st-tools-sync && git clone --depth 1 https://github.com/Asuccc/asucooo-st.git ~/.st-tools-sync && cp ~/.st-tools-sync/st.sh ~/st.sh && bash ~/st.sh
 ```
 
 脚本会打开管理面板，选择「1) 一键安装」即可。也可以跳过菜单直接安装：

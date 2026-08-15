@@ -94,8 +94,11 @@ sync_st_script() {
       return 0
     fi
   fi
-  # 兜底：curl 直接下载
-  curl -fsSL "$BASE_URL/st.sh" -o "$HOME/st.sh" 2>/dev/null && chmod +x "$HOME/st.sh"
+  # 兜底：curl 下载（raw 失败则尝试 jsDelivr CDN）
+  if ! curl -fsSL "$BASE_URL/st.sh" -o "$HOME/st.sh" 2>/dev/null; then
+    curl -fsSL "https://cdn.jsdelivr.net/gh/${GITHUB_USER}/${REPO_NAME}@main/st.sh" -o "$HOME/st.sh" 2>/dev/null
+  fi
+  chmod +x "$HOME/st.sh"
 }
 
 # ---------- 一键安装 ----------
