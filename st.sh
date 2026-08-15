@@ -161,6 +161,7 @@ cmd_start() {
   fi
   info "启动 SillyTavern，请用浏览器访问 http://127.0.0.1:${PORT}"
   info "按 Ctrl+C 停止服务。"
+  warn "【提醒】启动酒馆后需要把 Termux 挂小窗；不想挂小窗，请在手机设置里调整 Termux 的省电策略（一般允许后台活动或无限制）。"
   cd "$ST_DIR" && node server.js
 }
 
@@ -360,6 +361,7 @@ cmd_menu() {
     fi
     echo "  0) 退出"
     echo "--------------------------------------"
+    warn "【！！启动酒馆后 需要把 Termux 挂小窗，不想挂小窗就在手机设置里面调一下 Termux 的省电策略（一般允许后台活动或者叫无限制）】"
     read -r -p "请选择: " choice
     case "$choice" in
       1)
