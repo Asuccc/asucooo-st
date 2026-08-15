@@ -139,9 +139,15 @@ cmd_install() {
   info "  首次使用:  浏览器打开上述地址，在右上角设置中配置模型 API"
   info "             (OpenAI 兼容接口 / Claude / Gemini / 本地后端等)"
   info "  自启动:    已开启，重启 Termux 后自动弹出管理菜单"
-  info "  关闭自启动: bash ~/st.sh autostart off"
+  info "  如需关闭:  bash ~/st.sh autostart off"
   info "  安全提醒:  请及时在设置中设置用户名和密码，防止被他人访问"
   info "=============================================="
+
+  # 首次安装完成后，直接打开一次管理菜单（无需重启 Termux）
+  if [ "${FROM_MENU:-0}" != "1" ] && [ -t 0 ]; then
+    info "正在打开管理菜单..."
+    cmd_menu
+  fi
 }
 
 # ---------- 启动 ----------
@@ -358,7 +364,7 @@ cmd_menu() {
     read -r -p "请选择: " choice
     case "$choice" in
       1)
-        if is_installed; then cmd_start; else cmd_install; fi
+        if is_installed; then cmd_start; else FROM_MENU=1 cmd_install; fi
         ;;
       2)
         if is_installed; then cmd_update; else cmd_status; fi
