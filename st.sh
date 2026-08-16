@@ -60,6 +60,15 @@ confirm() {
   esac
 }
 
+# 等待按回车返回首页（非交互/管道模式下自动跳过，避免卡住）
+press_enter() {
+  if [ "${NONINTERACTIVE:-0}" = "1" ] || [ ! -t 0 ]; then
+    return
+  fi
+  echo
+  read -r -p "  按回车返回首页" _
+}
+
 is_installed() {
   [ -d "$ST_DIR" ] && [ -f "$ST_DIR/server.js" ]
 }
@@ -171,6 +180,8 @@ cmd_install() {
   info "  如需关闭:  bash ~/st.sh autostart off"
   info "=============================================="
 
+  press_enter
+
   # 首次安装完成后，直接打开一次管理菜单（无需重启 Termux）
   if [ "${FROM_MENU:-0}" != "1" ] && [ -t 0 ]; then
     info "正在打开管理菜单..."
@@ -182,11 +193,12 @@ cmd_install() {
 cmd_start() {
   if ! is_installed; then
     error "尚未安装 SillyTavern，请先运行: bash st.sh install"
+    press_enter
     return 1
   fi
   if [ ! -d "$ST_DIR/node_modules" ]; then
     info "检测到依赖未安装，正在安装 (npm install)..."
-    (cd "$ST_DIR" && npm install --no-audit --no-fund) || { error "npm install 失败。"; return 1; }
+    (cd "$ST_DIR" && npm install --no-audit --no-fund) || { error "npm install 失败。"; press_enter; return 1; }
   fi
   info "启动 SillyTavern，请用浏览器访问 http://127.0.0.1:${PORT}"
   info "按 Ctrl+C 停止服务。"
@@ -197,12 +209,13 @@ cmd_start() {
 cmd_update() {
   if ! is_installed; then
     error "尚未安装 SillyTavern，请先运行: bash st.sh install"
+    press_enter
     return 1
   fi
   info "拉取最新代码..."
-  (cd "$ST_DIR" && git pull --ff-only) || { error "更新失败，请检查网络或本地文件改动。"; return 1; }
+  (cd "$ST_DIR" && git pull --ff-only) || { error "更新失败，请检查网络或本地文件改动。"; press_enter; return 1; }
   info "更新依赖 (npm install)..."
-  (cd "$ST_DIR" && npm install --no-audit --no-fund) || { error "npm install 失败。"; return 1; }
+  (cd "$ST_DIR" && npm install --no-audit --no-fund) || { error "npm install 失败。"; press_enter; return 1; }
   # 同步更新管理脚本本体
   if [ "$GITHUB_USER" != "你的GitHub用户名" ]; then
     if sync_st_script; then
@@ -211,13 +224,16 @@ cmd_update() {
       warn "管理脚本同步失败（网络问题），可稍后重试: bash ~/st.sh update"
     fi
   fi
-  info "更新完成！"
+  info "更新完毕！"
+  info "当前 SillyTavern 版本: $(git -C "$ST_DIR" log -1 --format='%h %cs %s' 2>/dev/null)"
+  press_enter
 }
 
 # ---------- 卸载 ----------
 cmd_uninstall() {
   if ! is_installed; then
     error "未检测到 SillyTavern 安装（$ST_DIR 不存在）。"
+    press_enter
     return 1
   fi
   warn "卸载将删除 $ST_DIR 目录，包括所有聊天记录、角色卡、世界书等数据（不可恢复！）"
@@ -233,6 +249,7 @@ cmd_uninstall() {
   else
     warn "已取消卸载。"
   fi
+  press_enter
 }
 
 # ---------- 状态 ----------
@@ -249,6 +266,7 @@ cmd_status() {
   else
     echo "SillyTavern: 未安装"
   fi
+  press_enter
 }
 
 # ---------- Termux 自启动 ----------
