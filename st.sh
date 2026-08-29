@@ -254,15 +254,21 @@ ver_cmp() {
 }
 
 # 获取酒馆仓库的默认分支名（origin/HEAD 指向的分支，如 release）
-# 纯 bash 实现，不写死分支名，避免仓库改分支名后失效
+# 纯 bash 实现，不写死分支名；origin/HEAD 缺失时按常见分支名兜底探测
 st_default_branch() {
-  local ref
+  local ref br
   ref=$(git -C "$ST_DIR" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null)
   if [ -n "$ref" ]; then
     echo "${ref#origin/}"
-  else
-    echo "main"
+    return
   fi
+  for br in release main master staging; do
+    if git -C "$ST_DIR" rev-parse --verify "refs/remotes/origin/$br" >/dev/null 2>&1; then
+      echo "$br"
+      return
+    fi
+  done
+  echo "release"
 }
 
 cmd_switch() {
