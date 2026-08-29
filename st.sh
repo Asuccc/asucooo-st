@@ -149,7 +149,7 @@ cmd_install() {
   if is_installed; then
     warn "检测到 $ST_DIR 已存在，跳过克隆。"
   else
-    info "克隆 SillyTavern 官方仓库（main 稳定分支，浅克隆以节省空间）..."
+    info "克隆 SillyTavern 官方仓库（官方默认稳定分支，浅克隆以节省空间）..."
     git clone --depth 1 "$ST_REPO" "$ST_DIR" || { error "克隆失败，请检查网络。"; exit 1; }
   fi
 
@@ -213,8 +213,10 @@ cmd_update() {
     return 1
   fi
   if ! git -C "$ST_DIR" symbolic-ref -q HEAD >/dev/null 2>&1; then
-    warn "当前处于固定版本模式（不在 main 分支），无法直接更新。"
-    warn "请在面板选「6 切换酒馆版本」→ 输入 0 切回 main 后再更新。"
+    local defbr
+    defbr=$(st_default_branch)
+    warn "当前处于固定版本模式（不在 ${defbr} 分支），无法直接更新。"
+    warn "请在面板选「6 切换酒馆版本」→ 输入 0 切回 ${defbr} 后再更新。"
     press_enter
     return 1
   fi
@@ -251,6 +253,18 @@ ver_cmp() {
   return 0
 }
 
+# 获取酒馆仓库的默认分支名（origin/HEAD 指向的分支，如 release）
+# 纯 bash 实现，不写死分支名，避免仓库改分支名后失效
+st_default_branch() {
+  local ref
+  ref=$(git -C "$ST_DIR" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null)
+  if [ -n "$ref" ]; then
+    echo "${ref#origin/}"
+  else
+    echo "main"
+  fi
+}
+
 cmd_switch() {
   if ! is_installed; then
     error "尚未安装 SillyTavern，请先安装后再切换版本。"
@@ -259,6 +273,8 @@ cmd_switch() {
   fi
   echo "当前版本: $(git -C "$ST_DIR" log -1 --format='%h %cs %s' 2>/dev/null)"
   echo
+  local defbr
+  defbr=$(st_default_branch)
   info "正在获取 SillyTavern 所有可用版本..."
   local raw line tag sel target cur i pos total found
   # 纯 bash 解析：只依赖 git，避免 awk/sed/sort 等外部命令在部分设备上崩溃
@@ -291,7 +307,7 @@ cmd_switch() {
 
   total=${#versions[@]}
   echo "共 $total 个版本（最新在前，仅显示前 30 个，可直接输入完整版本号选更旧的）："
-  echo "   0) main（跟随最新版）"
+  echo "   0) ${defbr}（跟随最新版）"
   for ((i=0; i<total && i<30; i++)); do
     printf "  %2d) %s\n" $((i+1)) "${versions[$i]}"
   done
@@ -299,12 +315,12 @@ cmd_switch() {
   sel="${1:-}"
   if [ -z "$sel" ]; then
     echo
-    read -r -p "输入编号或完整版本号（如 1.10.2），0=main: " sel
+    read -r -p "输入编号或完整版本号（如 1.10.2），0=${defbr}: " sel
   fi
 
   target=""
   case "$sel" in
-    0|main) target="main" ;;
+    0|"$defbr") target="$defbr" ;;
     *)
       if [[ "$sel" =~ ^[0-9]+$ ]]; then
         if [ "$sel" -ge 1 ] && [ "$sel" -le "$total" ]; then
@@ -321,7 +337,7 @@ cmd_switch() {
     press_enter
     return 1
   fi
-  if [ "$target" != "main" ]; then
+  if [ "$target" != "$defbr" ]; then
     found=0
     for tag in "${tags[@]}"; do
       if [ "$tag" = "$target" ]; then found=1; break; fi
@@ -333,7 +349,7 @@ cmd_switch() {
     fi
   fi
 
-  cur=$(git -C "$ST_DIR" describe --tags --exact-match 2>/dev/null || echo "main")
+  cur=$(git -C "$ST_DIR" describe --tags --exact-match 2>/dev/null || echo "$defbr")
   if [ "$cur" = "$target" ]; then
     info "当前已经在该版本（$target），无需切换。"
     press_enter
@@ -348,9 +364,9 @@ cmd_switch() {
     return 0
   fi
 
-  if [ "$target" = "main" ]; then
-    info "拉取 main 分支最新代码..."
-    (cd "$ST_DIR" && git checkout main >/dev/null 2>&1 && git pull --ff-only origin main >/dev/null 2>&1) \
+  if [ "$target" = "$defbr" ]; then
+    info "拉取 ${defbr} 分支最新代码..."
+    (cd "$ST_DIR" && git checkout "$defbr" >/dev/null 2>&1 && git pull --ff-only origin "$defbr" >/dev/null 2>&1) \
       || { error "切换失败，请检查网络。"; press_enter; return 1; }
   else
     info "拉取版本 $target ..."
@@ -366,8 +382,8 @@ cmd_switch() {
 
   echo
   info "切换完成！当前版本: $(git -C "$ST_DIR" log -1 --format='%h %cs %s' 2>/dev/null)"
-  if [ "$target" != "main" ]; then
-    warn "提示：当前为固定版本模式，更新功能需先切回 main（面板选 6 → 0）。"
+  if [ "$target" != "$defbr" ]; then
+    warn "提示：当前为固定版本模式，更新功能需先切回 ${defbr}（面板选 6 → 0）。"
   fi
   press_enter
 }
