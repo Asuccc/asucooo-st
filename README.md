@@ -27,11 +27,13 @@
 
 ## 🚀 一键安装
 
-**方法一（推荐）：jsDelivr CDN —— 国内用户首选，无需安装 git**
+**方法一（推荐）：jsDelivr CDN —— 国内用户首选，无需安装 git，安装稳定版**
 
 ```bash
-curl -fsSL https://cdn.jsdelivr.net/gh/Asuccc/asucooo-st@main/st.sh -o ~/st.sh && bash ~/st.sh
+curl -fsSL https://cdn.jsdelivr.net/gh/Asuccc/asucooo-st@v1.0/st.sh -o ~/st.sh && bash ~/st.sh
 ```
+
+> 稳定版链接（v1.0 标签）缓存可靠、内容固定；需要体验最新改动时用「方法三」git 方式。
 
 **方法二：GitHub 官方 raw —— 国外网络直连更快**
 
