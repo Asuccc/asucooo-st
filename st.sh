@@ -212,13 +212,16 @@ cmd_update() {
     press_enter
     return 1
   fi
+  # 固定版本模式（游离 HEAD）：自动切回默认分支后再更新，无需手动操作
   if ! git -C "$ST_DIR" symbolic-ref -q HEAD >/dev/null 2>&1; then
     local defbr
     defbr=$(st_default_branch)
-    warn "当前处于固定版本模式（不在 ${defbr} 分支），无法直接更新。"
-    warn "请在面板选「6 切换酒馆版本」→ 输入 0 切回 ${defbr} 后再更新。"
-    press_enter
-    return 1
+    warn "检测到固定版本模式，自动切回 ${defbr} 分支后再更新..."
+    (cd "$ST_DIR" && git checkout "$defbr" >/dev/null 2>&1) || {
+      error "自动切回 ${defbr} 分支失败。"
+      press_enter
+      return 1
+    }
   fi
   info "拉取最新代码..."
   (cd "$ST_DIR" && git pull --ff-only) || { error "更新失败，请检查网络或本地文件改动。"; press_enter; return 1; }
@@ -389,7 +392,7 @@ cmd_switch() {
   echo
   info "切换完成！当前版本: $(git -C "$ST_DIR" log -1 --format='%h %cs %s' 2>/dev/null)"
   if [ "$target" != "$defbr" ]; then
-    warn "提示：当前为固定版本模式，更新功能需先切回 ${defbr}（面板选 6 → 0）。"
+    warn "提示：当前为固定版本模式；之后直接运行「更新」会自动切回 ${defbr} 再更新，无需手动操作。"
   fi
   press_enter
 }
