@@ -236,6 +236,21 @@ cmd_update() {
 }
 
 # ---------- 切换酒馆版本 ----------
+# 纯 bash 版本号比较：$1 > $2 返回 1；相等返回 0；$1 < $2 返回 2
+ver_cmp() {
+  local -a a b
+  local i ai bi
+  IFS='.' read -r -a a <<< "$1"
+  IFS='.' read -r -a b <<< "$2"
+  for ((i=0; i<${#a[@]} || i<${#b[@]}; i++)); do
+    ai=${a[$i]:-0}
+    bi=${b[$i]:-0}
+    if ((10#$ai > 10#$bi)); then return 1; fi
+    if ((10#$ai < 10#$bi)); then return 2; fi
+  done
+  return 0
+}
+
 cmd_switch() {
   if ! is_installed; then
     error "尚未安装 SillyTavern，请先安装后再切换版本。"
@@ -245,25 +260,40 @@ cmd_switch() {
   echo "当前版本: $(git -C "$ST_DIR" log -1 --format='%h %cs %s' 2>/dev/null)"
   echo
   info "正在获取 SillyTavern 所有可用版本..."
-  local versions total sel target cur i v
-  versions=$(git ls-remote --tags "$ST_REPO" 2>/dev/null \
-    | awk '{print $2}' \
-    | sed 's|refs/tags/||; s|\^{}||' \
-    | grep -v '^$' \
-    | sort -V -r -u)
-  if [ -z "$versions" ]; then
-    error "获取版本列表失败，请检查网络后重试。"
+  local raw line tag sel target cur i pos total found
+  # 纯 bash 解析：只依赖 git，避免 awk/sed/sort 等外部命令在部分设备上崩溃
+  raw=$(git ls-remote --tags --refs "$ST_REPO" 2>/dev/null)
+  if [ -z "$raw" ]; then
+    error "获取版本列表失败（网络问题或 git 异常）。"
+    error "可手动验证: git ls-remote --tags --refs https://github.com/SillyTavern/SillyTavern.git"
     press_enter
     return 1
   fi
-  total=$(echo "$versions" | wc -l)
+  local -a tags=()
+  while IFS= read -r line; do
+    tag=${line##*refs/tags/}
+    [ -n "$tag" ] && tags+=("$tag")
+  done <<< "$raw"
+
+  # 纯 bash 排序（新 → 旧）
+  local -a versions=()
+  for tag in "${tags[@]}"; do
+    pos=${#versions[@]}
+    for ((i=0; i<${#versions[@]}; i++)); do
+      ver_cmp "$tag" "${versions[$i]}"
+      if [ "$?" = "1" ]; then
+        pos=$i
+        break
+      fi
+    done
+    versions=("${versions[@]:0:$pos}" "$tag" "${versions[@]:$pos}")
+  done
+
+  total=${#versions[@]}
   echo "共 $total 个版本（最新在前，仅显示前 30 个，可直接输入完整版本号选更旧的）："
   echo "   0) main（跟随最新版）"
-  i=0
-  echo "$versions" | while read -r v; do
-    i=$((i+1))
-    printf "  %2d) %s\n" "$i" "$v"
-    [ "$i" -ge 30 ] && break
+  for ((i=0; i<total && i<30; i++)); do
+    printf "  %2d) %s\n" $((i+1)) "${versions[$i]}"
   done
 
   sel="${1:-}"
@@ -272,11 +302,14 @@ cmd_switch() {
     read -r -p "输入编号或完整版本号（如 1.10.2），0=main: " sel
   fi
 
+  target=""
   case "$sel" in
     0|main) target="main" ;;
     *)
       if [[ "$sel" =~ ^[0-9]+$ ]]; then
-        target=$(echo "$versions" | sed -n "${sel}p")
+        if [ "$sel" -ge 1 ] && [ "$sel" -le "$total" ]; then
+          target="${versions[$((sel-1))]}"
+        fi
       else
         target="${sel#v}"   # 容错：v1.17.0 → 1.17.0
       fi
@@ -288,10 +321,16 @@ cmd_switch() {
     press_enter
     return 1
   fi
-  if [ "$target" != "main" ] && ! echo "$versions" | grep -qx "$target"; then
-    error "版本 $target 不存在，请重试。"
-    press_enter
-    return 1
+  if [ "$target" != "main" ]; then
+    found=0
+    for tag in "${tags[@]}"; do
+      if [ "$tag" = "$target" ]; then found=1; break; fi
+    done
+    if [ "$found" = "0" ]; then
+      error "版本 $target 不存在，请重试。"
+      press_enter
+      return 1
+    fi
   fi
 
   cur=$(git -C "$ST_DIR" describe --tags --exact-match 2>/dev/null || echo "main")
