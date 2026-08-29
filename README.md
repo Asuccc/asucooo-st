@@ -71,6 +71,7 @@ bash ~/st.sh
 | `bash ~/st.sh uninstall` | 卸载（删除全部数据） |
 | `bash ~/st.sh status` | 查看状态信息 |
 | `bash ~/st.sh autostart` | 设置打开 Termux 自启动 |
+| `bash ~/st.sh switch` | 切换酒馆版本（如 `switch 1.10.2`） |
 
 ## 🔄 Termux 自启动
 
@@ -96,6 +97,22 @@ bash ~/st.sh autostart status   # 查看当前状态
 > 原理：脚本会向 `~/.bashrc` 写入一段带标记的配置块（`# >>> ST-AUTOSTART-BEGIN >>>`），由脚本统一管理，重复设置不会产生冗余。
 >
 > 临时跳过自启动：在 Termux 里先执行 `export ST_SKIP_AUTOSTART=1` 再打开新会话即可。
+
+## 🔄 切换酒馆版本
+
+在管理面板选择「**6) 切换酒馆版本**」，可查看并切换到 SillyTavern 任意历史版本：
+
+- 输入列表编号，或直接输入完整版本号（如 `1.10.2`）
+- 输入 `0` 或 `main` 可切回跟随最新版
+- **切换完成后自动重新安装依赖**（npm install），无需手动操作
+- 固定版本模式下（不在 main），「更新」功能会提示先切回 main
+
+也可以用命令直接切换：
+
+```bash
+bash ~/st.sh switch          # 交互式选择版本
+bash ~/st.sh switch 1.10.2   # 直接切换到指定版本
+```
 
 ## 🔌 配置模型后端
 

@@ -212,6 +212,12 @@ cmd_update() {
     press_enter
     return 1
   fi
+  if ! git -C "$ST_DIR" symbolic-ref -q HEAD >/dev/null 2>&1; then
+    warn "当前处于固定版本模式（不在 main 分支），无法直接更新。"
+    warn "请在面板选「6 切换酒馆版本」→ 输入 0 切回 main 后再更新。"
+    press_enter
+    return 1
+  fi
   info "拉取最新代码..."
   (cd "$ST_DIR" && git pull --ff-only) || { error "更新失败，请检查网络或本地文件改动。"; press_enter; return 1; }
   info "更新依赖 (npm install)..."
@@ -226,6 +232,104 @@ cmd_update() {
   fi
   info "更新完毕！"
   info "当前 SillyTavern 版本: $(git -C "$ST_DIR" log -1 --format='%h %cs %s' 2>/dev/null)"
+  press_enter
+}
+
+# ---------- 切换酒馆版本 ----------
+cmd_switch() {
+  if ! is_installed; then
+    error "尚未安装 SillyTavern，请先安装后再切换版本。"
+    press_enter
+    return 1
+  fi
+  echo "当前版本: $(git -C "$ST_DIR" log -1 --format='%h %cs %s' 2>/dev/null)"
+  echo
+  info "正在获取 SillyTavern 所有可用版本..."
+  local versions total sel target cur i v
+  versions=$(git ls-remote --tags "$ST_REPO" 2>/dev/null \
+    | awk '{print $2}' \
+    | sed 's|refs/tags/||; s|\^{}||' \
+    | grep -v '^$' \
+    | sort -V -r -u)
+  if [ -z "$versions" ]; then
+    error "获取版本列表失败，请检查网络后重试。"
+    press_enter
+    return 1
+  fi
+  total=$(echo "$versions" | wc -l)
+  echo "共 $total 个版本（最新在前，仅显示前 30 个，可直接输入完整版本号选更旧的）："
+  echo "   0) main（跟随最新版）"
+  i=0
+  echo "$versions" | while read -r v; do
+    i=$((i+1))
+    printf "  %2d) %s\n" "$i" "$v"
+    [ "$i" -ge 30 ] && break
+  done
+
+  sel="${1:-}"
+  if [ -z "$sel" ]; then
+    echo
+    read -r -p "输入编号或完整版本号（如 1.10.2），0=main: " sel
+  fi
+
+  case "$sel" in
+    0|main) target="main" ;;
+    *)
+      if [[ "$sel" =~ ^[0-9]+$ ]]; then
+        target=$(echo "$versions" | sed -n "${sel}p")
+      else
+        target="${sel#v}"   # 容错：v1.17.0 → 1.17.0
+      fi
+      ;;
+  esac
+
+  if [ -z "$target" ]; then
+    error "无效选择：$sel"
+    press_enter
+    return 1
+  fi
+  if [ "$target" != "main" ] && ! echo "$versions" | grep -qx "$target"; then
+    error "版本 $target 不存在，请重试。"
+    press_enter
+    return 1
+  fi
+
+  cur=$(git -C "$ST_DIR" describe --tags --exact-match 2>/dev/null || echo "main")
+  if [ "$cur" = "$target" ]; then
+    info "当前已经在该版本（$target），无需切换。"
+    press_enter
+    return 0
+  fi
+
+  warn "即将切换到：$target"
+  warn "切换完成后会自动重新安装依赖（npm install）。"
+  if ! confirm "确认切换？"; then
+    warn "已取消。"
+    press_enter
+    return 0
+  fi
+
+  if [ "$target" = "main" ]; then
+    info "拉取 main 分支最新代码..."
+    (cd "$ST_DIR" && git checkout main >/dev/null 2>&1 && git pull --ff-only origin main >/dev/null 2>&1) \
+      || { error "切换失败，请检查网络。"; press_enter; return 1; }
+  else
+    info "拉取版本 $target ..."
+    (cd "$ST_DIR" && git fetch --depth 1 origin tag "$target" >/dev/null 2>&1) \
+      || { error "拉取版本失败，请检查网络。"; press_enter; return 1; }
+    (cd "$ST_DIR" && git checkout "$target" >/dev/null 2>&1) \
+      || { error "切换失败（仓库可能有本地改动，或版本不存在）。"; press_enter; return 1; }
+  fi
+
+  info "正在重新安装依赖 (npm install)，视网络情况可能需要几分钟..."
+  (cd "$ST_DIR" && npm install --no-audit --no-fund) \
+    || { error "npm install 失败。"; press_enter; return 1; }
+
+  echo
+  info "切换完成！当前版本: $(git -C "$ST_DIR" log -1 --format='%h %cs %s' 2>/dev/null)"
+  if [ "$target" != "main" ]; then
+    warn "提示：当前为固定版本模式，更新功能需先切回 main（面板选 6 → 0）。"
+  fi
   press_enter
 }
 
@@ -406,6 +510,7 @@ cmd_menu() {
       echo -e "   ${CYAN}3)${NC} 卸载 SillyTavern"
       echo -e "   ${CYAN}4)${NC} 查看状态信息"
       echo -e "   ${CYAN}5)${NC} 设置 Termux 自启动"
+      echo -e "   ${CYAN}6)${NC} 切换酒馆版本"
     else
       echo -e "   ${CYAN}1)${NC} 一键安装 SillyTavern"
       echo -e "   ${CYAN}2)${NC} 查看状态信息"
@@ -417,7 +522,7 @@ cmd_menu() {
     echo -e "   状态: ${BOLD}$(is_installed && echo -n 已安装 || echo -n 未安装)${NC} | 自启动: ${BOLD}$(autostart_is_on && echo -n 开启 || echo -n 关闭)${NC} | Node: $(node --version 2>/dev/null || echo 未安装)"
     echo -e "${GREEN}  ──────────────────────────────────────────${NC}"
     echo
-    read -r -p "  请选择 [0-5]: " choice
+    read -r -p "  请选择 [0-6]: " choice
     case "$choice" in
       1)
         if is_installed; then cmd_start; else FROM_MENU=1 cmd_install; fi
@@ -428,6 +533,7 @@ cmd_menu() {
       3) cmd_uninstall ;;
       4) cmd_status ;;
       5) cmd_autostart ;;
+      6) cmd_switch ;;
       0)
         echo "再见！"
         break
@@ -449,6 +555,7 @@ usage() {
   echo "  uninstall   卸载 SillyTavern"
   echo "  status      查看状态信息"
   echo "  autostart   设置 Termux 自启动（可用参数: on/direct/off/status）"
+  echo "  switch      切换酒馆版本（可用参数: 版本号，如 switch 1.10.2）"
   echo "  help        显示本帮助"
 }
 
@@ -467,6 +574,7 @@ main() {
     uninstall) cmd_uninstall ;;
     status|info) cmd_status ;;
     autostart) cmd_autostart "${2:-}" ;;
+    switch) cmd_switch "${2:-}" ;;
     help|-h|--help) usage ;;
     *)
       warn "未知命令: $1"
