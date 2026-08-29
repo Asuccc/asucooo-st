@@ -47,10 +47,10 @@ curl -fsSL https://raw.githubusercontent.com/Asuccc/asucooo-st/main/st.sh -o ~/s
 pkg install -y git && rm -rf ~/.st-tools-sync && git clone --depth 1 https://github.com/Asuccc/asucooo-st.git ~/.st-tools-sync && cp ~/.st-tools-sync/st.sh ~/st.sh && bash ~/st.sh
 ```
 
-脚本会打开管理面板，选择「1) 一键安装」即可。也可以跳过菜单直接安装：
+**脚本检测到尚未安装 SillyTavern 时，会自动进入一键安装**（更新软件源 → 装依赖 → 克隆酒馆 → 装依赖 → 开启自启动），全程无需手动选择；安装完成后自动打开管理面板。已安装过的情况下直接打开管理面板：
 
 ```bash
-bash ~/st.sh install
+bash ~/st.sh
 ```
 
 安装完成后，用手机浏览器访问 **http://127.0.0.1:8000** 即可进入 SillyTavern 界面。

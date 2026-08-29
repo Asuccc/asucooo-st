@@ -653,6 +653,11 @@ main() {
     "")
       if [ "${NONINTERACTIVE:-0}" = "1" ]; then
         cmd_install
+      elif ! is_installed; then
+        # 首次使用：直接自动安装 SillyTavern，无需手动选择
+        warn "检测到尚未安装 SillyTavern，自动进入一键安装..."
+        echo
+        cmd_install
       else
         cmd_menu
       fi
