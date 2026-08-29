@@ -274,6 +274,25 @@ st_default_branch() {
   echo "release"
 }
 
+# 检出到指定版本：失败时显示真实错误，并自动暂存本地改动后重试（$1=检出目标）
+st_checkout() {
+  local out
+  out=$(cd "$ST_DIR" && git checkout "$1" 2>&1)
+  if [ $? -ne 0 ]; then
+    warn "直接检出 $1 失败（通常是有本地文件改动），自动暂存改动后重试..."
+    (cd "$ST_DIR" && git stash push -u -m "st-version-switch" >/dev/null 2>&1)
+    out=$(cd "$ST_DIR" && git checkout "$1" 2>&1)
+    if [ $? -ne 0 ]; then
+      error "检出 $1 失败，git 错误信息如下："
+      echo "$out"
+      warn "可先手动运行: git -C ~/SillyTavern status 查看本地改动。"
+      return 1
+    fi
+    warn "已自动暂存原有改动（git -C ~/SillyTavern stash list 可查看）；因版本不同未自动恢复，避免配置冲突。"
+  fi
+  return 0
+}
+
 cmd_switch() {
   if ! is_installed; then
     error "尚未安装 SillyTavern，请先安装后再切换版本。"
@@ -375,14 +394,20 @@ cmd_switch() {
 
   if [ "$target" = "$defbr" ]; then
     info "拉取 ${defbr} 分支最新代码..."
-    (cd "$ST_DIR" && git checkout "$defbr" >/dev/null 2>&1 && git pull --ff-only origin "$defbr" >/dev/null 2>&1) \
-      || { error "切换失败，请检查网络。"; press_enter; return 1; }
+    st_checkout "$defbr" || { press_enter; return 1; }
+    (cd "$ST_DIR" && git pull --ff-only origin "$defbr" >/dev/null 2>&1) \
+      || { error "拉取更新失败，请检查网络。"; press_enter; return 1; }
   else
     info "拉取版本 $target ..."
-    (cd "$ST_DIR" && git fetch --depth 1 origin tag "$target" >/dev/null 2>&1) \
-      || { error "拉取版本失败，请检查网络。"; press_enter; return 1; }
-    (cd "$ST_DIR" && git checkout "$target" >/dev/null 2>&1) \
-      || { error "切换失败（仓库可能有本地改动，或版本不存在）。"; press_enter; return 1; }
+    local ferr
+    ferr=$(cd "$ST_DIR" && git fetch --depth 1 origin tag "$target" 2>&1)
+    if [ $? -ne 0 ]; then
+      error "拉取版本 $target 失败，git 错误信息如下："
+      echo "$ferr"
+      press_enter
+      return 1
+    fi
+    st_checkout "$target" || { press_enter; return 1; }
   fi
 
   info "正在重新安装依赖 (npm install)，视网络情况可能需要几分钟..."
