@@ -217,11 +217,7 @@ cmd_update() {
     local defbr
     defbr=$(st_default_branch)
     warn "检测到固定版本模式，自动切回 ${defbr} 分支后再更新..."
-    (cd "$ST_DIR" && git checkout "$defbr" >/dev/null 2>&1) || {
-      error "自动切回 ${defbr} 分支失败。"
-      press_enter
-      return 1
-    }
+    st_checkout "$defbr" || { press_enter; return 1; }
   fi
   info "拉取最新代码..."
   (cd "$ST_DIR" && git pull --ff-only) || { error "更新失败，请检查网络或本地文件改动。"; press_enter; return 1; }
